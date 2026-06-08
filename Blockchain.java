@@ -62,7 +62,7 @@ public class Blockchain {
         /** Number of leading zeros required in a valid hash.
          *  Difficulty 4 = ~65 000 hash attempts on average.
          *  Expect ~2-10 seconds depending on hardware. */
-        public static final int    DIFFICULTY = 4;
+        public static final int    DIFFICULTY = 5;
         private static final String TARGET    = "0".repeat(DIFFICULTY);
 
         private final int                  index;
@@ -293,6 +293,21 @@ public class Blockchain {
         pendingTransactions = new ArrayList<>();
         autoSave();
         return newBlock;
+    }
+
+    /**
+     * Mine a block WITHOUT adding it to the chain.
+     * Used by BlockchainAutoDemo so multiple nodes can race — the winner calls
+     * addMinedBlock() to claim it; losers get a previousHash mismatch and orphan.
+     */
+    public Block mineBlockOnly(String minerNodeId) {
+        if (pendingTransactions.isEmpty()) return null;
+        List<Transaction> txList = new ArrayList<>(pendingTransactions);
+        txList.add(new Transaction("SYSTEM", minerNodeId, MINING_REWARD));
+        Block block = new Block(chain.size(), txList,
+                getLatestBlock().getHash(), minerNodeId);
+        block.mineBlock();
+        return block;
     }
 
     // --- Balance & consensus --------------------------------------------------
