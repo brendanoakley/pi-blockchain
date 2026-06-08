@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pi Blockchain - Live Demo</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3350;
+    --accent: #6c8ef7;
+    --accent2: #a78bfa;
+    --green: #34d399;
+    --red: #f87171;
+    --yellow: #fbbf24;
+    --orange: #fb923c;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --macbook: #6c8ef7;
+    --pi1: #34d399;
+    --pi2: #f472b6;
+    --pi3: #fb923c;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+    padding: 20px;
+  }
+
+  /* ── Header ── */
+  header {
+    text-align: center;
+    padding: 28px 0 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 28px;
+  }
+  header h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.5px; }
+  header h1 span { color: var(--accent); }
+  header p { color: var(--muted); margin-top: 6px; font-size: 0.95rem; }
+
+  /* ── Controls ── */
+  .controls {
+    display: flex; gap: 12px; justify-content: center;
+    flex-wrap: wrap; margin-bottom: 28px;
+  }
+  button {
+    padding: 10px 24px; border-radius: 8px; border: none;
+    font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all .15s;
+  }
+  #btnStart  { background: var(--green);  color: #000; }
+  #btnStop   { background: var(--red);    color: #fff; }
+  #btnReset  { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  button:hover { filter: brightness(1.15); }
+  button:disabled { opacity: .4; cursor: default; filter: none; }
+
+  .speed-wrap {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 16px; font-size: 0.85rem; color: var(--muted);
+  }
+  .speed-wrap input { accent-color: var(--accent); cursor: pointer; }
+
+  /* ── Stats bar ── */
+  .stats-bar {
+    display: flex; gap: 16px; flex-wrap: wrap;
+    justify-content: center; margin-bottom: 28px;
+  }
+  .stat {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 20px; text-align: center; min-width: 130px;
+  }
+  .stat-val { font-size: 1.6rem; font-weight: 700; color: var(--accent); }
+  .stat-lbl { font-size: 0.75rem; color: var(--muted); margin-top: 2px; text-transform: uppercase; letter-spacing: .5px; }
+
+  /* ── Layout ── */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 20px;
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+  @media (max-width: 900px) { .main-grid { grid-template-columns: 1fr; } }
+
+  /* ── Nodes ── */
+  .nodes-section h2 { font-size: 1rem; color: var(--muted); margin-bottom: 14px; text-transform: uppercase; letter-spacing: .5px; }
+  .nodes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+
+  .node-card {
+    background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: 14px; padding: 18px; position: relative; overflow: hidden;
+    transition: border-color .3s;
+  }
+  .node-card.mining  { border-color: var(--yellow); animation: pulse-mine 1.2s infinite; }
+  .node-card.won     { border-color: var(--green);  animation: pulse-win .5s 2; }
+  .node-card.orphan  { border-color: var(--red);    animation: pulse-lose .4s 2; }
+  .node-card.spoof   { border-color: var(--red);    animation: shake .35s 1; }
+
+  @keyframes pulse-mine {
+    0%,100% { box-shadow: 0 0 0 0 rgba(251,191,36,.0); }
+    50%      { box-shadow: 0 0 12px 4px rgba(251,191,36,.25); }
+  }
+  @keyframes pulse-win {
+    0%,100% { box-shadow: 0 0 0 0 rgba(52,211,153,.0); }
+    50%      { box-shadow: 0 0 20px 6px rgba(52,211,153,.35); }
+  }
+  @keyframes pulse-lose {
+    0%,100% { box-shadow: 0 0 0 0 rgba(248,113,113,.0); }
+    50%      { box-shadow: 0 0 14px 4px rgba(248,113,113,.3); }
+  }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    25%      { transform: translateX(-5px); }
+    75%      { transform: translateX(5px); }
+  }
+
+  .node-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .node-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .node-name { font-weight: 700; font-size: 1rem; }
+  .node-type { font-size: 0.75rem; color: var(--muted); margin-left: auto; }
+
+  .node-balance {
+    font-size: 1.5rem; font-weight: 700; margin-bottom: 4px;
+  }
+  .node-balance-lbl { font-size: 0.75rem; color: var(--muted); margin-bottom: 14px; }
+
+  .node-stats { display: flex; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+  .node-stat { font-size: 0.8rem; }
+  .node-stat span { color: var(--muted); }
+
+  .node-status {
+    font-size: 0.8rem; color: var(--muted); min-height: 18px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  .mine-bar-wrap {
+    height: 5px; background: var(--surface2); border-radius: 3px;
+    margin-bottom: 8px; overflow: hidden; display: none;
+  }
+  .mine-bar {
+    height: 100%; background: var(--yellow); border-radius: 3px;
+    width: 0; transition: width .3s linear;
+  }
+  .node-card.mining .mine-bar-wrap { display: block; }
+
+  /* ── Blockchain chain ── */
+  .chain-section { margin-bottom: 24px; }
+  .chain-section h2 { font-size: 1rem; color: var(--muted); margin-bottom: 14px; text-transform: uppercase; letter-spacing: .5px; }
+
+  .chain-scroll {
+    overflow-x: auto; padding-bottom: 8px;
+  }
+  .chain-inner { display: flex; align-items: center; gap: 0; min-width: max-content; padding: 4px; }
+
+  .block {
+    background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: 12px; padding: 14px 16px; min-width: 170px;
+    flex-shrink: 0; position: relative; transition: all .3s;
+  }
+  .block.new-block { animation: pop-in .4s ease; }
+  @keyframes pop-in {
+    0%   { transform: scale(.85); opacity: 0; }
+    70%  { transform: scale(1.04); }
+    100% { transform: scale(1);   opacity: 1; }
+  }
+
+  .block-num { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+  .block-hash { font-size: 0.7rem; font-family: monospace; color: var(--accent); margin: 4px 0 8px; word-break: break-all; }
+  .block-miner { font-size: 0.75rem; margin-bottom: 4px; }
+  .block-miner .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; }
+  .block-txcount { font-size: 0.7rem; color: var(--muted); }
+
+  .chain-arrow {
+    color: var(--muted); font-size: 1.4rem; padding: 0 6px; flex-shrink: 0;
+  }
+
+  /* ── Log ── */
+  .log-section h2 { font-size: 1rem; color: var(--muted); margin-bottom: 14px; text-transform: uppercase; letter-spacing: .5px; }
+
+  .log-box {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; height: 520px; overflow-y: auto;
+    padding: 14px; display: flex; flex-direction: column; gap: 8px;
+  }
+
+  .log-entry {
+    border-radius: 8px; padding: 10px 12px; font-size: 0.82rem;
+    border-left: 3px solid transparent; animation: slide-in .2s ease;
+  }
+  @keyframes slide-in { from { opacity:0; transform: translateX(8px); } to { opacity:1; transform: none; } }
+
+  .log-entry.mine    { background: rgba(251,191,36,.08); border-color: var(--yellow); }
+  .log-entry.win     { background: rgba(52,211,153,.1);  border-color: var(--green); }
+  .log-entry.orphan  { background: rgba(248,113,113,.08); border-color: var(--red); }
+  .log-entry.tx      { background: rgba(108,142,247,.08); border-color: var(--accent); }
+  .log-entry.spoof   { background: rgba(248,113,113,.08); border-color: var(--red); }
+  .log-entry.info    { background: var(--surface2); border-color: var(--border); }
+
+  .log-time { color: var(--muted); font-family: monospace; font-size: 0.75rem; }
+  .log-node { font-weight: 700; font-size: 0.78rem; margin: 2px 0; }
+  .log-msg  { color: var(--text); line-height: 1.45; }
+  .log-explain { color: var(--muted); font-size: 0.76rem; margin-top: 4px; font-style: italic; }
+
+  /* ── Tooltip concept cards ── */
+  .concepts {
+    margin-top: 6px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .concept-card {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 14px;
+    font-size: 0.8rem; cursor: default;
+  }
+  .concept-card strong { color: var(--accent2); display: block; margin-bottom: 3px; font-size: 0.82rem; }
+  .concept-card p { color: var(--muted); line-height: 1.4; }
+
+  /* ── Legend ── */
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 16px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 18px;
+    font-size: 0.8rem; margin-bottom: 20px; align-items: center;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-box { width: 12px; height: 12px; border-radius: 3px; }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Pi <span>Blockchain</span> &mdash; Live Demo</h1>
+  <p>4 computers competing in real time to mine blocks, send money, and keep the network honest</p>
+</header>
+
+<!-- Controls -->
+<div class="controls">
+  <button id="btnStart">&#9654; Start Demo</button>
+  <button id="btnStop" disabled>&#9646;&#9646; Pause</button>
+  <button id="btnReset">&#8635; Reset</button>
+  <div class="speed-wrap">
+    Speed: <input type="range" id="speedSlider" min="0.5" max="4" step="0.5" value="1"> <span id="speedLabel">1x</span>
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="stats-bar">
+  <div class="stat"><div class="stat-val" id="stat-blocks">1</div><div class="stat-lbl">Blocks mined</div></div>
+  <div class="stat"><div class="stat-val" id="stat-txs">0</div><div class="stat-lbl">Transactions</div></div>
+  <div class="stat"><div class="stat-val" id="stat-orphans">0</div><div class="stat-lbl">Orphaned blocks</div></div>
+  <div class="stat"><div class="stat-val" id="stat-spoofs">0</div><div class="stat-lbl">Spoofs blocked</div></div>
+</div>
+
+<!-- Legend -->
+<div class="legend" style="max-width:1280px;margin:0 auto 20px;">
+  <strong style="color:var(--muted);font-size:.8rem;text-transform:uppercase;letter-spacing:.5px;">Color key:</strong>
+  <div class="legend-item"><div class="legend-box" style="background:var(--yellow)"></div> Mining in progress</div>
+  <div class="legend-item"><div class="legend-box" style="background:var(--green)"></div> Block won</div>
+  <div class="legend-item"><div class="legend-box" style="background:var(--red)"></div> Orphaned / Spoof blocked</div>
+  <div class="legend-item"><div class="legend-box" style="background:var(--accent)"></div> Transaction sent</div>
+</div>
+
+<div class="main-grid">
+  <div>
+    <!-- Nodes -->
+    <div class="nodes-section">
+      <h2>Computers on the network</h2>
+      <div class="nodes-grid" id="nodesGrid"></div>
+    </div>
+
+    <!-- Blockchain -->
+    <div class="chain-section">
+      <h2>The blockchain &mdash; shared ledger of all blocks</h2>
+      <div class="chain-scroll">
+        <div class="chain-inner" id="chainInner"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right panel -->
+  <div>
+    <div class="log-section">
+      <h2>Live event log</h2>
+      <div class="log-box" id="logBox"></div>
+    </div>
+
+    <div class="concepts" style="margin-top:16px;">
+      <div class="concept-card">
+        <strong>What is mining?</strong>
+        <p>Each computer races to solve a hard math puzzle. The winner gets to add the next block to the chain and earns 50 coins as a reward.</p>
+      </div>
+      <div class="concept-card">
+        <strong>What is an orphaned block?</strong>
+        <p>When two computers finish mining at nearly the same time, only one can win. The other's block is discarded (orphaned) &mdash; its work is wasted.</p>
+      </div>
+      <div class="concept-card">
+        <strong>What is a spoof / double-spend?</strong>
+        <p>A cheat attempt: spending the same coins twice, or faking a transaction. The network automatically detects and rejects these every time.</p>
+      </div>
+      <div class="concept-card">
+        <strong>Why is it secure?</strong>
+        <p>Every block contains a fingerprint (hash) of the block before it. Changing any block would break every block after it &mdash; and every other computer would instantly reject the tampered chain.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Configuration ──────────────────────────────────────────────
+const NODES = [
+  { id: 'MacBook', type: 'Laptop',       color: '#6c8ef7', startBalance: 1000 },
+  { id: 'Pi 1',   type: 'Raspberry Pi', color: '#34d399', startBalance: 500  },
+  { id: 'Pi 2',   type: 'Raspberry Pi', color: '#f472b6', startBalance: 500  },
+  { id: 'Pi 3',   type: 'Raspberry Pi', color: '#fb923c', startBalance: 500  },
+];
+
+const MINE_DURATION_BASE = 9000; // ms at 1x speed
+const EVENT_INTERVAL     = 3500;
+const NAMES = ['MacBook','Pi 1','Pi 2','Pi 3'];
+
+// ── State ───────────────────────────────────────────────────────
+let state = {};
+let timers = [];
+let running = false;
+let speed = 1;
+let startTime = Date.now();
+
+function initState() {
+  state = {
+    chain: [genesisBlock()],
+    pending: [],
+    nodes: NODES.map(n => ({
+      ...n,
+      balance: n.startBalance,
+      blocksMined: 0,
+      txsSent: 0,
+      mining: false,
+      mineProgress: 0,
+      mineStart: null,
+      mineTimer: null,
+    })),
+    totalTx: 0,
+    totalOrphans: 0,
+    totalSpoofs: 0,
+  };
+}
+
+function genesisBlock() {
+  return {
+    index: 0,
+    miner: 'SYSTEM',
+    minerColor: '#64748b',
+    hash: '00000PI_BLOCKCHAIN_GENESIS_V1',
+    txCount: 0,
+    reward: 0,
+    isGenesis: true,
+  };
+}
+
+// ── SHA-256 simulation (fake but deterministic-ish) ─────────────
+function fakeHash(str) {
+  // Produces a plausible-looking hex string from input
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  const seed = h;
+  let out = '00000';
+  const chars = '0123456789abcdef';
+  let s = seed;
+  for (let i = 0; i < 59; i++) {
+    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+    out += chars[s & 0xf];
+  }
+  return out;
+}
+
+// ── Rendering ───────────────────────────────────────────────────
+function colorForNode(id) {
+  const n = state.nodes.find(n => n.id === id);
+  return n ? n.color : '#64748b';
+}
+
+function renderNodes() {
+  const grid = document.getElementById('nodesGrid');
+  grid.innerHTML = '';
+  state.nodes.forEach((node, i) => {
+    const card = document.createElement('div');
+    card.className = 'node-card';
+    card.id = 'node-card-' + i;
+    card.innerHTML = `
+      <div class="node-header">
+        <div class="node-dot" style="background:${node.color}"></div>
+        <div class="node-name">${node.id}</div>
+        <div class="node-type">${node.type}</div>
+      </div>
+      <div class="node-balance" style="color:${node.color}">${node.balance.toFixed(1)} <span style="font-size:.85rem;font-weight:400;color:var(--muted)">coins</span></div>
+      <div class="node-balance-lbl">Current balance</div>
+      <div class="node-stats">
+        <div class="node-stat"><span>Blocks mined: </span>${node.blocksMined}</div>
+        <div class="node-stat"><span>Txs sent: </span>${node.txsSent}</div>
+      </div>
+      <div class="mine-bar-wrap"><div class="mine-bar" id="mine-bar-${i}" style="width:${node.mineProgress}%"></div></div>
+      <div class="node-status" id="node-status-${i}">${node.mining ? '⛏  Mining block #' + state.chain.length + '...' : 'Idle'}</div>
+    `;
+    grid.appendChild(card);
+    if (node.mining) card.classList.add('mining');
+  });
+}
+
+function updateNodeCard(i) {
+  const node = state.nodes[i];
+  const card = document.getElementById('node-card-' + i);
+  if (!card) return;
+  card.querySelector('.node-balance').innerHTML = `${node.balance.toFixed(1)} <span style="font-size:.85rem;font-weight:400;color:var(--muted)">coins</span>`;
+  card.querySelector('.node-stats').innerHTML = `
+    <div class="node-stat"><span>Blocks mined: </span>${node.blocksMined}</div>
+    <div class="node-stat"><span>Txs sent: </span>${node.txsSent}</div>
+  `;
+  const bar = document.getElementById('mine-bar-' + i);
+  if (bar) bar.style.width = node.mineProgress + '%';
+  document.getElementById('node-status-' + i).textContent =
+    node.mining ? '⛏  Mining block #' + state.chain.length + '...' : 'Idle';
+  card.classList.toggle('mining', node.mining);
+}
+
+function flashCard(i, cls, duration = 1200) {
+  const card = document.getElementById('node-card-' + i);
+  if (!card) return;
+  card.classList.add(cls);
+  setTimeout(() => card.classList.remove(cls), duration);
+}
+
+function renderChain() {
+  const inner = document.getElementById('chainInner');
+  inner.innerHTML = '';
+  state.chain.forEach((block, i) => {
+    if (i > 0) {
+      const arrow = document.createElement('div');
+      arrow.className = 'chain-arrow';
+      arrow.innerHTML = '&#8592;';
+      inner.appendChild(arrow);
+    }
+    const b = document.createElement('div');
+    b.className = 'block' + (block.isNew ? ' new-block' : '');
+    const color = block.isGenesis ? '#64748b' : colorForNode(block.miner);
+    b.innerHTML = `
+      <div class="block-num">Block #${block.index}</div>
+      <div class="block-hash">${block.hash.substring(0, 18)}...</div>
+      <div class="block-miner">
+        <span class="dot" style="background:${color}"></span>
+        ${block.isGenesis ? 'Genesis' : block.miner}
+      </div>
+      <div class="block-txcount">${block.isGenesis ? 'Starting balances' : block.txCount + ' tx' + (block.txCount !== 1 ? 's' : '') + ' &bull; +50 coins'}</div>
+    `;
+    inner.appendChild(b);
+    block.isNew = false;
+  });
+  // Auto-scroll to end
+  const scroll = inner.parentElement;
+  scroll.scrollLeft = scroll.scrollWidth;
+}
+
+function updateStats() {
+  document.getElementById('stat-blocks').textContent   = state.chain.length;
+  document.getElementById('stat-txs').textContent      = state.totalTx;
+  document.getElementById('stat-orphans').textContent  = state.totalOrphans;
+  document.getElementById('stat-spoofs').textContent   = state.totalSpoofs;
+}
+
+// ── Log ─────────────────────────────────────────────────────────
+function addLog(type, nodeId, msg, explain = '') {
+  const box = document.getElementById('logBox');
+  const color = colorForNode(nodeId);
+  const elapsed = Math.floor((Date.now() - startTime) / 1000);
+  const mm = String(Math.floor(elapsed / 60)).padStart(2,'0');
+  const ss = String(elapsed % 60).padStart(2,'0');
+
+  const entry = document.createElement('div');
+  entry.className = 'log-entry ' + type;
+  entry.innerHTML = `
+    <div class="log-time">${mm}:${ss}</div>
+    <div class="log-node" style="color:${color}">${nodeId}</div>
+    <div class="log-msg">${msg}</div>
+    ${explain ? `<div class="log-explain">${explain}</div>` : ''}
+  `;
+  box.appendChild(entry);
+  box.scrollTop = box.scrollHeight;
+
+  // Keep log from getting too long
+  while (box.children.length > 120) box.removeChild(box.firstChild);
+}
+
+// ── Mining ──────────────────────────────────────────────────────
+function startMining(nodeIdx) {
+  const node = state.nodes[nodeIdx];
+  if (node.mining || state.pending.length === 0) return;
+
+  node.mining = true;
+  node.mineProgress = 0;
+  node.mineStart = Date.now();
+  const duration = (MINE_DURATION_BASE / speed) * (0.75 + Math.random() * 0.5);
+
+  addLog('mine', node.id, `⛏  Starting to mine block #${state.chain.length}...`,
+    'Working through billions of number combinations to find the winning hash.');
+
+  updateNodeCard(nodeIdx);
+
+  // Progress ticker
+  const tick = setInterval(() => {
+    if (!node.mining) { clearInterval(tick); return; }
+    const elapsed = Date.now() - node.mineStart;
+    node.mineProgress = Math.min(98, (elapsed / duration) * 100);
+    const bar = document.getElementById('mine-bar-' + nodeIdx);
+    if (bar) bar.style.width = node.mineProgress + '%';
+  }, 200);
+  timers.push(tick);
+
+  const t = setTimeout(() => {
+    clearInterval(tick);
+    finishMining(nodeIdx);
+  }, duration);
+  timers.push(t);
+  node.mineTimer = t;
+}
+
+function finishMining(nodeIdx) {
+  const node = state.nodes[nodeIdx];
+  if (!node.mining) return;
+
+  const blockIdx = state.chain.length;
+
+  // Check if another node already won this block
+  if (state.chain.length > blockIdx - 1 && state.lastMinedBlock === blockIdx) {
+    // Orphaned
+    node.mining = false;
+    node.mineProgress = 0;
+    state.totalOrphans++;
+    addLog('orphan', node.id,
+      `✗  Orphaned block #${blockIdx} — someone else won first!`,
+      'Another computer solved the puzzle a moment earlier. This node\'s work is discarded and it must start over.');
+    flashCard(nodeIdx, 'orphan', 1400);
+    updateNodeCard(nodeIdx);
+    updateStats();
+    return;
+  }
+
+  // Winner
+  state.lastMinedBlock = blockIdx;
+
+  const txsInBlock = [...state.pending];
+  state.pending = [];
+
+  const block = {
+    index: blockIdx,
+    miner: node.id,
+    minerColor: node.color,
+    hash: fakeHash(blockIdx + node.id + Date.now()),
+    txCount: txsInBlock.length,
+    isNew: true,
+  };
+  state.chain.push(block);
+
+  node.balance += 50; // mining reward
+  node.blocksMined++;
+  node.mining = false;
+  node.mineProgress = 100;
+  state.totalTx += txsInBlock.length;
+
+  addLog('win', node.id,
+    `★  WON block #${blockIdx}! Earned 50 coins. (${txsInBlock.length} transaction${txsInBlock.length !== 1 ? 's' : ''} confirmed)`,
+    'This node found the winning hash first. The block is now permanently added to the chain and broadcast to all other computers.');
+
+  flashCard(nodeIdx, 'won', 1600);
+
+  // Mark all other mining nodes as orphaned (with slight delay each)
+  state.nodes.forEach((other, oi) => {
+    if (oi !== nodeIdx && other.mining) {
+      const delay = 300 + Math.random() * 600;
+      const t = setTimeout(() => {
+        other.mining = false;
+        other.mineProgress = 0;
+        state.totalOrphans++;
+        addLog('orphan', other.id,
+          `✗  Orphaned block #${blockIdx} — ${node.id} won the race.`,
+          'This node was also mining but lost the race. Its block is discarded.');
+        flashCard(oi, 'orphan', 1200);
+        updateNodeCard(oi);
+        updateStats();
+      }, delay);
+      timers.push(t);
+    }
+  });
+
+  updateNodeCard(nodeIdx);
+  renderChain();
+  renderNodes();
+  updateStats();
+}
+
+// ── Transactions ─────────────────────────────────────────────────
+function sendTransaction(fromIdx) {
+  const from = state.nodes[fromIdx];
+  const toIdx = (fromIdx + 1 + Math.floor(Math.random() * (NODES.length - 1))) % NODES.length;
+  const to = state.nodes[toIdx];
+  const amount = Math.floor(10 + Math.random() * 60);
+
+  if (from.balance < amount + 10) {
+    addLog('info', from.id, `Skipped transaction — not enough coins (${from.balance.toFixed(0)} coins, need ${amount}).`, '');
+    return;
+  }
+
+  from.balance -= amount;
+  to.balance += amount;
+  from.txsSent++;
+  state.pending.push({ from: from.id, to: to.id, amount });
+
+  addLog('tx', from.id,
+    `&#8594;  Sent ${amount} coins to ${to.id}. (${state.pending.length} tx waiting to be mined)`,
+    'This transaction is broadcast to all computers but won\'t be "official" until it\'s included in a mined block.');
+
+  updateNodeCard(fromIdx);
+  updateNodeCard(toIdx);
+}
+
+// ── Spoof ────────────────────────────────────────────────────────
+function attemptSpoof(fromIdx) {
+  const from = state.nodes[fromIdx];
+  const toIdx = (fromIdx + 2) % NODES.length;
+  const to = state.nodes[toIdx];
+  const amount = Math.floor(from.balance * 0.8);
+
+  state.totalSpoofs++;
+
+  addLog('spoof', from.id,
+    `&#9888; SPOOF BLOCKED: tried to fake sending ${amount} coins to ${to.id} (double-spend).`,
+    'The network detected this cheating attempt. Every other computer verified the transaction history and rejected it immediately.');
+
+  flashCard(fromIdx, 'spoof', 1200);
+  updateStats();
+}
+
+// ── Event scheduler ──────────────────────────────────────────────
+function scheduleEvent() {
+  if (!running) return;
+
+  const t = setTimeout(() => {
+    if (!running) return;
+    doRandomEvent();
+    scheduleEvent();
+  }, (EVENT_INTERVAL / speed) * (0.5 + Math.random() * 1.0));
+  timers.push(t);
+}
+
+function doRandomEvent() {
+  const nodeIdx = Math.floor(Math.random() * state.nodes.length);
+  const roll = Math.random();
+
+  if (roll < 0.38) {
+    // Send transaction
+    sendTransaction(nodeIdx);
+  } else if (roll < 0.68) {
+    // Mine (only if there are pending txs and not already mining)
+    const anyMining = state.nodes.some(n => n.mining);
+    if (state.pending.length > 0) {
+      // Pick a random subset of idle nodes to race
+      const idleNodes = state.nodes
+        .map((n, i) => ({ n, i }))
+        .filter(({ n }) => !n.mining);
+
+      if (idleNodes.length > 0) {
+        // 1-3 nodes start mining simultaneously
+        const racers = Math.min(idleNodes.length, 1 + Math.floor(Math.random() * 3));
+        shuffle(idleNodes).slice(0, racers).forEach(({ i }) => startMining(i));
+      }
+    } else {
+      sendTransaction(nodeIdx); // fall back to tx if nothing to mine
+    }
+  } else if (roll < 0.83) {
+    // Do nothing visible (idle chatter / status check)
+    // occasionally add a pending tx first then trigger mine
+    sendTransaction(nodeIdx);
+  } else {
+    // Spoof attempt
+    attemptSpoof(nodeIdx);
+  }
+}
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// ── Controls ─────────────────────────────────────────────────────
+document.getElementById('btnStart').addEventListener('click', () => {
+  if (running) return;
+  running = true;
+  startTime = Date.now();
+  document.getElementById('btnStart').disabled = true;
+  document.getElementById('btnStop').disabled = false;
+
+  addLog('info', 'System',
+    'Demo started. 4 computers are now connected and active.',
+    'Each computer will independently decide to send transactions, mine blocks, or (occasionally) attempt fraud.');
+
+  // Seed some initial transactions so mining can begin right away
+  const t1 = setTimeout(() => { sendTransaction(0); sendTransaction(2); }, 400 / speed);
+  const t2 = setTimeout(() => scheduleEvent(), 1200 / speed);
+  timers.push(t1, t2);
+});
+
+document.getElementById('btnStop').addEventListener('click', () => {
+  running = false;
+  timers.forEach(clearTimeout);
+  timers = [];
+  document.getElementById('btnStart').disabled = false;
+  document.getElementById('btnStop').disabled = true;
+  addLog('info', 'System', 'Demo paused.', '');
+});
+
+document.getElementById('btnReset').addEventListener('click', () => {
+  running = false;
+  timers.forEach(clearTimeout);
+  timers = [];
+  document.getElementById('btnStart').disabled = false;
+  document.getElementById('btnStop').disabled = true;
+  document.getElementById('logBox').innerHTML = '';
+  initState();
+  renderNodes();
+  renderChain();
+  updateStats();
+  addLog('info', 'System', 'Reset. Press Start to begin a new demo.', '');
+});
+
+document.getElementById('speedSlider').addEventListener('input', function() {
+  speed = parseFloat(this.value);
+  document.getElementById('speedLabel').textContent = speed + 'x';
+});
+
+// ── Init ─────────────────────────────────────────────────────────
+initState();
+renderNodes();
+renderChain();
+updateStats();
+addLog('info', 'System',
+  'Ready. Press Start to begin the live demo.',
+  'You will see all four computers compete to mine blocks, exchange coins, and defend against fraud attempts in real time.');
+</script>
+</body>
+</html>
